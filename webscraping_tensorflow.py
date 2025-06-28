@@ -139,109 +139,32 @@ for sort_method in sort_methods:
             all_reviews.append(review)
     print(f"✅ {sort_name}: {len(reviews):,} total, {len(all_reviews):,} unique")
 
-# 3.4. Koleksi multi-bahasa
-languages = ['id', 'en', 'ms', 'th', 'zh', 'ja', 'ko', 'vi', 'tl', 'hi']
-for lang in languages:
-    print(f"⏳ Mengumpulkan bahasa: {lang}...")
-    with tf.device('/GPU:0' if tf.config.list_physical_devices('GPU') else '/CPU:0'):
-        reviews_newest = reviews_all(app_id, lang=lang, sort=Sort.NEWEST, count=8000)
-        reviews_relevant = reviews_all(app_id, lang=lang, sort=Sort.MOST_RELEVANT, count=8000)
-    for review in reviews_newest + reviews_relevant:
-        review_id = f"{review.get('content', '')[:50]}_{review.get('userName', '')}_{str(review.get('at', ''))}"
-        if review_id not in unique_review_ids:
-            unique_review_ids.add(review_id)
-            all_reviews.append(review)
-    print(f"✅ {lang}: {len(all_reviews):,} unique")
+# 3.4. Koleksi hanya bahasa Indonesia
+# print("⏳ Mengumpulkan review bahasa Indonesia saja...")
+# with tf.device('/GPU:0' if tf.config.list_physical_devices('GPU') else '/CPU:0'):
+#     reviews_newest = reviews_all(app_id, lang='id', sort=Sort.NEWEST, count=15000)
+#     reviews_relevant = reviews_all(app_id, lang='id', sort=Sort.MOST_RELEVANT, count=15000)
+# all_reviews = reviews_newest + reviews_relevant
+# print(f"✅ Total review Indonesia terkumpul: {len(all_reviews):,}")
 
 # 3.5. Fallback jika gagal
 if not all_reviews:
     print("❌ Gagal mengumpulkan ulasan. Menggunakan fallback method...")
-    all_reviews = reviews_all(app_id)
+    all_reviews = reviews_all(app_id, lang='id')
     print(f"✅ Fallback berhasil: {len(all_reviews)} ulasan")
 
 df_all = pd.DataFrame(all_reviews)
 total_collected = len(df_all)
-print(f"\n🎉 BERHASIL MENGUMPULKAN: {total_collected:,} ulasan")
+print(f"\n🎉 BERHASIL MENGUMPULKAN: {total_collected:,} ulasan bahasa Indonesia")
 
 # =============================================================================
-# 4. ANALISIS DAN TRANSLASI BAHASA
+# 4. SKIP ANALISIS DAN TRANSLASI BAHASA
 # =============================================================================
+# Tidak perlu deteksi bahasa dan translasi, langsung gunakan content asli
+
 # 4.1. Analisis distribusi bahasa
-if 'content' in df_all.columns and not df_all.empty:
-    print("📊 Analisis distribusi bahasa...")
-    sample_size = min(1000, len(df_all))
-    sample_reviews = df_all['content'].head(sample_size).tolist()
-    language_counts = {'indonesian': 0, 'english': 0, 'other': 0}
-    indonesian_keywords = ['yang', 'ini', 'itu', 'dan', 'dengan', 'untuk', 'dari', 'ke', 'di', 'pada', 'adalah', 'akan', 'atau', 'tidak', 'bisa', 'sudah', 'masih', 'juga', 'saja', 'hanya', 'game', 'bagus', 'jelek', 'seru', 'keren']
-    english_keywords = ['the', 'and', 'this', 'that', 'with', 'for', 'from', 'good', 'bad', 'great', 'awesome', 'terrible', 'amazing', 'worst', 'best', 'love', 'hate', 'like', 'game', 'play']
-    for review in sample_reviews:
-        if pd.isna(review):
-            continue
-        review_words = str(review).lower().split()
-        indonesian_count = sum(word in indonesian_keywords for word in review_words)
-        english_count = sum(word in english_keywords for word in review_words)
-        if indonesian_count >= english_count and indonesian_count >= 1:
-            language_counts['indonesian'] += 1
-        elif english_count > indonesian_count and english_count >= 1:
-            language_counts['english'] += 1
-        else:
-            language_counts['other'] += 1
-    total_analyzed = sum(language_counts.values())
-    if total_analyzed > 0:
-        indonesian_pct = (language_counts['indonesian'] / total_analyzed) * 100
-        english_pct = (language_counts['english'] / total_analyzed) * 100
-        other_pct = (language_counts['other'] / total_analyzed) * 100
-        print(f"📈 Distribusi bahasa (sample {sample_size} ulasan):")
-        print(f"   🇮🇩 Indonesia: {indonesian_pct:.1f}% ({language_counts['indonesian']} ulasan)")
-        print(f"   🇺🇸 English: {english_pct:.1f}% ({language_counts['english']} ulasan)")
-        print(f"   🌐 Lainnya: {other_pct:.1f}% ({language_counts['other']} ulasan)")
-        estimated_english_reviews = int((language_counts['english'] / total_analyzed) * total_collected)
-        print(f"\n💡 Estimasi ulasan bahasa Inggris: ~{estimated_english_reviews:,} ulasan")
-        print(f"📊 Potensi peningkatan dataset Indonesia: {estimated_english_reviews:,} + {int(indonesian_pct/100 * total_collected):,} = {estimated_english_reviews + int(indonesian_pct/100 * total_collected):,} ulasan")
-        if english_pct > 5:
-            print(f"\n🔄 Proses translasi ke Indonesia...")
-            batch_size = 200
-            translated_content = []
-            for i in range(0, len(df_all), batch_size):
-                batch = df_all['content'].iloc[i:i+batch_size]
-                batch_translated = []
-                for text in batch:
-                    if not text or pd.isna(text):
-                        batch_translated.append(text)
-                        continue
-                    try:
-                        detected = translator.detect(text)
-                        detected_lang = detected.lang if hasattr(detected, 'lang') else 'unknown'
-                        confidence = getattr(detected, 'confidence', 0.0)
-                    except Exception:
-                        detected_lang = 'unknown'
-                        confidence = 0.0
-                    if detected_lang == 'id' or confidence < 0.3 or len(str(text).strip()) < 5:
-                        batch_translated.append(text)
-                    else:
-                        try:
-                            translated = translator.translate(text, dest='id')
-                            batch_translated.append(translated.text if hasattr(translated, 'text') else text)
-                        except Exception:
-                            batch_translated.append(text)
-                translated_content.extend(batch_translated)
-                if (i // batch_size) % 5 == 0:
-                    print(f"🚀 Diproses {i + len(batch):,}/{len(df_all):,} reviews...")
-                time.sleep(0.05)
-            df_all['content_translated'] = translated_content
-            translation_count = sum(
-                pd.notna(o) and pd.notna(t) and str(o) != str(t)
-                for o, t in zip(df_all['content'], df_all['content_translated'])
-            )
-            print(f"✅ Berhasil menerjemahkan {translation_count:,} ulasan")
-            print(f"📈 Total ulasan dalam bahasa Indonesia: ~{int(indonesian_pct/100 * total_collected) + translation_count:,}")
-            df_all['content_final'] = df_all['content_translated'].fillna(df_all['content'])
-        else:
-            print("ℹ️ Jumlah ulasan bahasa Inggris relatif kecil, skip terjemahan")
-            df_all['content_final'] = df_all['content']
-    else:
-        print("⚠️ Tidak dapat menganalisis bahasa, menggunakan data asli")
-        df_all['content_final'] = df_all['content']
+df_all['content_final'] = df_all['content']
+print(f"✅ Semua review sudah dalam bahasa Indonesia. Total data: {len(df_all)}")
 
 # 4.2. Copy dataframe untuk proses selanjutnya
 clean_df = df_all.copy()
@@ -272,21 +195,15 @@ print("📊 Jumlah data duplikat:", clean_df.duplicated().sum())
 print("\n🔧 Text cleaning...")
 def tf_text_cleaning(text_series):
     text_tensor = tf.constant(text_series.astype(str).tolist())
-    cleaned = tf.strings.regex_replace(text_tensor, r'[\w\s,]', '')
-    cleaned = tf.strings.regex_replace(cleaned, r'[0-9]+', '')
-    cleaned = tf.strings.regex_replace(cleaned, r'\n', ' ')
-    cleaned = tf.strings.regex_replace(cleaned, r'[\w\s]', '')
+    cleaned = tf.strings.regex_replace(text_tensor, r'\n', ' ')  # Ganti newline dengan spasi
+    cleaned = tf.strings.regex_replace(cleaned, r'[^A-Za-z\s]', ' ')  # Hapus karakter non-alfabet
+    cleaned = tf.strings.regex_replace(cleaned, r'\s+', ' ')  # Normalisasi spasi berlebih
     cleaned = tf.strings.strip(cleaned)
     cleaned = tf.strings.regex_replace(cleaned, r'aaa+', 'aa')
     cleaned = tf.strings.regex_replace(cleaned, r'eee+', 'ee')
     cleaned = tf.strings.regex_replace(cleaned, r'iii+', 'ii')
     cleaned = tf.strings.regex_replace(cleaned, r'ooo+', 'oo')
     cleaned = tf.strings.regex_replace(cleaned, r'uuu+', 'uu')
-    cleaned = tf.strings.regex_replace(cleaned, r'sss+', 'ss')
-    cleaned = tf.strings.regex_replace(cleaned, r'nnn+', 'nn')
-    cleaned = tf.strings.regex_replace(cleaned, r'hhh+', 'hh')
-    cleaned = tf.strings.regex_replace(cleaned, r'yyy+', 'yy')
-    cleaned = tf.strings.regex_replace(cleaned, r'[^A-Za-z\s]', '')
     return cleaned.numpy()
 cleaned_texts = tf_text_cleaning(clean_df['content'])
 clean_df['text_clean'] = [text.decode('utf-8') for text in cleaned_texts]
@@ -345,65 +262,165 @@ print("✅ Join tokens selesai")
 # 7. SENTIMENT LEXICON SETUP
 # =============================================================================
 # 7.1. Download kamus sentimen positif
+print("\n🔍 Mengunduh kamus sentimen...")
 kosakata_positif = {}
 try:
-    response = requests.get('https://raw.githubusercontent.com/angelmetanosaa/dataset/main/lexicon_positive.csv')
+    response = requests.get('https://storage.googleapis.com/iotnet/lexicon_positive.csv')
     if response.status_code == 200:
-        reader = csv.reader(StringIO(response.text), delimiter=',')
+        raw_data = response.text
+        print(f"📝 Raw data positif (10 baris pertama): {raw_data[:200]}...")
+        
+        reader = csv.reader(StringIO(raw_data), delimiter=',')
         for row in reader:
             if len(row) >= 2:
-                kosakata_positif[row[0]] = int(row[1])
+                try:
+                    kosakata_positif[row[0].strip()] = int(row[1])
+                except (ValueError, IndexError) as e:
+                    print(f"⚠️ Error parsing row {row}: {e}")
         print(f"✅ Berhasil memuat {len(kosakata_positif)} kata positif")
     else:
-        print("❌ Gagal mengunduh kamus kata positif")
+        print(f"❌ Gagal mengunduh kamus kata positif. Status code: {response.status_code}")
+        kosakata_positif = {
+            'bagus': 1, 'baik': 1, 'suka': 1, 'senang': 1, 'puas': 1, 
+            'recommended': 1, 'mantap': 1, 'keren': 1, 'awesome': 1,
+            'great': 1, 'love': 1, 'best': 1, 'amazing': 1, 'good': 1,
+            'excellent': 1, 'perfect': 1, 'nice': 1
+        }
+        print(f"✅ Menggunakan {len(kosakata_positif)} kata positif fallback")
 except Exception as e:
     print(f"❌ Error: {e}")
+    kosakata_positif = {
+        'bagus': 1, 'baik': 1, 'suka': 1, 'senang': 1, 'puas': 1, 
+        'recommended': 1, 'mantap': 1, 'keren': 1, 'awesome': 1,
+        'great': 1, 'love': 1, 'best': 1, 'amazing': 1, 'good': 1,
+        'excellent': 1, 'perfect': 1, 'nice': 1
+    }
+    print(f"✅ Menggunakan {len(kosakata_positif)} kata positif fallback")
 
 # 7.2. Download kamus sentimen negatif
 kosakata_negatif = {}
 try:
-    response = requests.get('https://raw.githubusercontent.com/angelmetanosaa/dataset/main/lexicon_negative.csv')
+    response = requests.get('https://storage.googleapis.com/iotnet/lexicon_negative.csv')
     if response.status_code == 200:
-        reader = csv.reader(StringIO(response.text), delimiter=',')
+        raw_data = response.text
+        print(f"📝 Raw data negatif (10 baris pertama): {raw_data[:200]}...")
+        
+        reader = csv.reader(StringIO(raw_data), delimiter=',')
         for row in reader:
             if len(row) >= 2:
-                kosakata_negatif[row[0]] = int(row[1])
+                try:
+                    kosakata_negatif[row[0].strip()] = int(row[1])
+                except (ValueError, IndexError) as e:
+                    print(f"⚠️ Error parsing row {row}: {e}")
         print(f"✅ Berhasil memuat {len(kosakata_negatif)} kata negatif")
     else:
-        print("❌ Gagal mengunduh kamus kata negatif")
+        print(f"❌ Gagal mengunduh kamus kata negatif. Status code: {response.status_code}")
+        kosakata_negatif = {
+            'buruk': 1, 'jelek': 1, 'benci': 1, 'kecewa': 1, 'marah': 1,
+            'gagal': 1, 'rusak': 1, 'kurang': 1, 'lambat': 1, 'crash': 1,
+            'bad': 1, 'worst': 1, 'hate': 1, 'terrible': 1, 'poor': 1,
+            'disappointed': 1, 'awful': 1, 'horrible': 1, 'fail': 1
+        }
+        print(f"✅ Menggunakan {len(kosakata_negatif)} kata negatif fallback")
 except Exception as e:
     print(f"❌ Error: {e}")
+    kosakata_negatif = {
+        'buruk': 1, 'jelek': 1, 'benci': 1, 'kecewa': 1, 'marah': 1,
+        'gagal': 1, 'rusak': 1, 'kurang': 1, 'lambat': 1, 'crash': 1,
+        'bad': 1, 'worst': 1, 'hate': 1, 'terrible': 1, 'poor': 1,
+        'disappointed': 1, 'awful': 1, 'horrible': 1, 'fail': 1
+    }
+    print(f"✅ Menggunakan {len(kosakata_negatif)} kata negatif fallback")
 
 # =============================================================================
 # 8. SENTIMENT CLASSIFICATION
 # =============================================================================
-# 8.1. Proses analisis sentimen
+# 8.1. Debug info untuk kamus sentimen
+print("\nDebug info kamus sentimen:")
+print(f"📊 Jumlah kata positif: {len(kosakata_positif)}")
+print(f"📊 Jumlah kata negatif: {len(kosakata_negatif)}")
+if len(kosakata_positif) > 0:
+    print(f"📝 Contoh kata positif: {list(kosakata_positif.keys())[:5]}")
+if len(kosakata_negatif) > 0:
+    print(f"📝 Contoh kata negatif: {list(kosakata_negatif.keys())[:5]}")
+
+# Cek contoh token dari data
+sample_tokens = [tokens for tokens in clean_df['text_filtered'][:100] if tokens]
+if sample_tokens:
+    flattened_tokens = [token for tokens_list in sample_tokens for token in tokens_list]
+    print(f"📝 Contoh token dari data: {flattened_tokens[:10]}")
+    pos_match = [token for token in flattened_tokens if token in kosakata_positif]
+    neg_match = [token for token in flattened_tokens if token in kosakata_negatif]
+    print(f"📊 Token positif yang ditemukan: {pos_match[:5]}")
+    print(f"📊 Token negatif yang ditemukan: {neg_match[:5]}")
+
+# 8.2. Proses analisis sentimen dengan perbaikan
 print("\nAnalisis sentimen...")
-positive_words = list(kosakata_positif.keys())
-positive_scores = list(kosakata_positif.values())
-negative_words = list(kosakata_negatif.keys())
-negative_scores = list(kosakata_negatif.values())
 polarity_scores = []
 polarities = []
+
 for tokens in clean_df['text_filtered']:
     if not tokens:
         polarity_scores.append(0)
         polarities.append('neutral')
         continue
-    pos_score = sum(positive_scores[positive_words.index(token)] for token in tokens if token in positive_words)
-    neg_score = sum(negative_scores[negative_words.index(token)] for token in tokens if token in negative_words)
-    total_score = pos_score + neg_score
+    
+    # Hitung skor secara lebih robust
+    pos_score = 0
+    neg_score = 0
+    
+    for token in tokens:
+        if token in kosakata_positif:
+            pos_score += kosakata_positif[token]
+        if token in kosakata_negatif:
+            neg_score += kosakata_negatif[token]
+    
+    total_score = pos_score - neg_score  # Perbaikan rumus skor
+    
     if total_score > 0:
         polarity = 'positive'
     elif total_score < 0:
         polarity = 'negative'
     else:
-        polarity = 'neutral'
+        # Fallback berdasarkan skor review jika tersedia
+        if 'score' in clean_df.columns:
+            score = clean_df.loc[len(polarities), 'score']
+            if score >= 4:
+                polarity = 'positive'
+            elif score <= 2:
+                polarity = 'negative'
+            else:
+                polarity = 'neutral'
+        else:
+            polarity = 'neutral'
+    
     polarity_scores.append(float(total_score))
     polarities.append(polarity)
+
 clean_df['polarity_score'] = polarity_scores
 clean_df['polarity'] = polarities
+
+# Tambahkan fallback sentimen berdasarkan skor review
+print("\n🔍 Menambahkan sentimen berdasarkan skor review sebagai fallback...")
+for idx, row in clean_df.iterrows():
+    # Jika sentimen masih neutral dan skor tersedia, gunakan skor untuk menentukan sentimen
+    if row['polarity'] == 'neutral' and 'score' in clean_df.columns:
+        score = row['score']
+        if score >= 4:
+            clean_df.at[idx, 'polarity'] = 'positive'
+            clean_df.at[idx, 'polarity_score'] = 1.0
+        elif score <= 2:
+            clean_df.at[idx, 'polarity'] = 'negative'
+            clean_df.at[idx, 'polarity_score'] = -1.0
+
+# Update distribusi sentimen setelah fallback
+sentiment_distribution_updated = clean_df['polarity'].value_counts()
+print(f"📊 Distribusi sentimen setelah fallback: {sentiment_distribution_updated.to_dict()}")
+
+# Distribusi sentimen setelah klasifikasi
+sentiment_distribution = clean_df['polarity'].value_counts()
 print("✅ Analisis sentimen selesai")
+print(f"📊 Distribusi sentimen: {sentiment_distribution.to_dict()}")
 
 # =============================================================================
 # 9. VISUALISASI DATA
@@ -429,8 +446,24 @@ ax = sns.countplot(data=clean_df, x='polarity', palette=palette, order=unique_se
 plt.title('Distribusi Kelas Sentimen', fontsize=14, fontweight='bold')
 plt.xlabel('Polaritas Sentimen', fontsize=12)
 plt.ylabel('Jumlah Ulasan', fontsize=12)
-for p in ax.patches:
-    ax.annotate(f'{int(p.get_height())}', (p.get_x() + p.get_width()/2., p.get_height()), ha='center', va='bottom', fontsize=11)
+
+# Perbaiki anotasi untuk menghindari error
+for i, p in enumerate(ax.patches):
+    try:
+        height = p.get_height()
+        width = p.get_width()
+        x = p.get_x()
+        ax.annotate(f'{int(height)}', 
+                   (x + width/2., height), 
+                   ha='center', va='bottom', fontsize=11)
+    except (AttributeError, TypeError):
+        # Fallback jika get_height, get_width, atau get_x tidak tersedia
+        counts = clean_df['polarity'].value_counts()
+        for j, (sentiment, count) in enumerate(counts.items()):
+            ax.text(j, count + 0.1, str(count), 
+                   horizontalalignment='center', fontsize=11)
+        break
+
 plt.tight_layout()
 plt.show()
 
@@ -484,11 +517,20 @@ text_data = clean_df['text_final'].tolist()
 vectorizer = TfidfVectorizer(max_features=1000)
 tfidf_matrix = vectorizer.fit_transform(text_data)
 feature_names = vectorizer.get_feature_names_out()
-tfidf_scores = tfidf_matrix.sum(axis=0).A1
-sorted_indices = np.argsort(tfidf_scores)[::-1][:20]
+
+# Gunakan metode alternatif untuk menghitung skor TF-IDF yang lebih reliable
+from scipy import sparse
+tfidf_sums = []
+for i in range(len(feature_names)):
+    # Gunakan slice column untuk mendapatkan skor TF-IDF untuk kata tertentu
+    col = tfidf_matrix.getcol(i)
+    tfidf_sums.append(np.sum(col.toarray()))
+
+# Dapatkan 20 kata dengan skor tertinggi
+sorted_indices = np.argsort(tfidf_sums)[::-1][:20]
 word_freq_df = pd.DataFrame({
     'kata': [feature_names[i] for i in sorted_indices],
-    'skor': [tfidf_scores[i] for i in sorted_indices]
+    'skor': [tfidf_sums[i] for i in sorted_indices]
 })
 plt.figure(figsize=(12, 8))
 sns.barplot(data=word_freq_df, y='kata', x='skor', palette='viridis')
