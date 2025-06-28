@@ -304,7 +304,6 @@ try:
     if response.status_code == 200:
         raw_data = response.text
         print(f"📝 Raw data negatif (10 baris pertama): {raw_data[:200]}...")
-        
         reader = csv.reader(StringIO(raw_data), delimiter=',')
         for row in reader:
             if len(row) >= 2:
@@ -332,7 +331,29 @@ except Exception as e:
     }
     print(f"✅ Menggunakan {len(kosakata_negatif)} kata negatif fallback")
 
-# =============================================================================
+kosakata_negatif.update({
+    # Indonesia
+    'parah': -1, 'sampah': -2, 'lemot': -1, 'lag': -1, 'ngelag': -1, 'error': -1, 'crash': -1, 'hang': -1, 'lelet': -1,
+    'jelek': -1, 'buruk': -1, 'benci': -1, 'kecewa': -1, 'mengecewakan': -1, 'payah': -1, 'rip': -1, 'gagal': -1,
+    'susah': -1, 'sulit': -1, 'ribet': -1, 'bohong': -2, 'tipu': -2, 'lemotnya': -1, 'bug': -1, 'glitch': -1, 'down': -1, 'mati': -1,
+    'hilang': -1, 'hilangnya': -1, 'lemah': -1, 'menyebalkan': -1, 'menjengkelkan': -1, 'bosen': -1, 'bosan': -1, 'membosankan': -1,
+    'tidak bisa': -1, 'tidak layak': -1, 'tidak suka': -1, 'tidak puas': -1, 'tidak bagus': -1, 'tidak baik': -1, 'tidak lancar': -1,
+    'tidak stabil': -1, 'tidak responsif': -1, 'tidak jelas': -1, 'tidak menarik': -1, 'tidak seru': -1, 'tidak keren': -1, 'tidak worth': -1,
+    'tidak recommended': -1, 'tidak direkomendasikan': -1, 'tidak nyaman': -1, 'tidak update': -1, 'tidak adil': -1, 'tidak seimbang': -1,
+    'tidak menyenangkan': -1, 'tidak memuaskan': -1, 'tidak membantu': -1, 'tidak support': -1, 'tidak connect': -1, 'disconnect': -1, 'dc': -1,
+    'lemot banget': -2, 'parah banget': -2, 'crash terus': -2, 'force close': -2, 'forceclose': -2, 'keluar sendiri': -2, 'keluar': -1,
+    'tidak bisa login': -2, 'tidak bisa main': -2, 'tidak bisa dibuka': -2, 'tidak bisa install': -2, 'tidak bisa update': -2,
+    'tidak bisa download': -2, 'tidak bisa connect': -2, 'tidak bisa masuk': -2, 'tidak bisa keluar': -2, 'tidak bisa jalan': -2,
+    'tidak bisa klik': -2, 'tidak bisa sentuh': -2, 'tidak bisa respon': -2, 'tidak worthit': -2, 'tidak recommended': -2,
+    'tidak direkomendasikan': -2, 'tidak suka': -2, 'tidak puas': -2, 'tidak bagus': -2, 'tidak baik': -2, 'tidak lancar': -2,
+    'tidak stabil': -2, 'tidak responsif': -2, 'tidak jelas': -2, 'tidak menarik': -2, 'tidak seru': -2, 'tidak keren': -2,
+    'tidak worth': -2, 'tidak recommended': -2, 'tidak direkomendasikan': -2, 'tidak nyaman': -2, 'tidak update': -2, 'tidak adil': -2,
+    'tidak seimbang': -2, 'tidak menyenangkan': -2, 'tidak memuaskan': -2, 'tidak membantu': -2, 'tidak support': -2, 'tidak connect': -2,
+    'disconnect': -2, 'dc': -2,
+    # Kata kasar/ekstrim Indonesia
+    'anjing': -3, 'bangsat': -3, 'kontol': -3, 'memek': -3, 'goblok': -3, 'tolol': -3, 'babi': -3, 'tai': -3, 'kampret': -2, 'brengsek': -3, 'setan': -2, 'sialan': -2, 'cacat': -2, 'idiot': -3, 'bodoh': -3, 'sinting': -2, 'edun': -2, 'edun banget': -2, 'ngentot': -3, 'fuck': -3, 'shit': -3, 'bitch': -3, 'bastard': -3, 'dick': -3, 'asshole': -3, 'jerk': -2, 'moron': -3, 'stupid': -3, 'dumb': -3, 'sucks': -2, 'useless': -2, 'trash': -3, 'garbage': -3, 'scam': -3, 'cheat': -2, 'cheater': -2, 'broken': -2, 'laggy': -2, 'slow': -1, 'crappy': -2, 'annoying': -1, 'hate': -2, 'worst': -3, 'terrible': -3, 'awful': -3, 'disgusting': -3, 'buggy': -2, 'crash': -2, 'disconnect': -2, 'unplayable': -3, 'pathetic': -3, 'horrible': -3, 'lousy': -2, 'retard': -3, 'retarded': -3, 'fucking': -3, 'damn': -2, 'dammit': -2, 'shithead': -3, 'douche': -3, 'douchebag': -3, 'loser': -2, 'jerk': -2, 'sial': -2, 'kampungan': -2, 'ngaco': -2, 'ngawur': -2, 'ngasal': -2, 'alay': -2, 'lebay': -2, 'norak': -2, 'ngeselin': -2, 'menyebalkan': -2, 'menjengkelkan': -2, 'parah banget': -3, 'sampah banget': -3
+})
+
 # 8. SENTIMENT CLASSIFICATION
 # =============================================================================
 # 8.1. Debug info untuk kamus sentimen
@@ -373,8 +394,7 @@ for tokens in clean_df['text_filtered']:
         if token in kosakata_positif:
             pos_score += kosakata_positif[token]
         if token in kosakata_negatif:
-            neg_score += kosakata_negatif[token]
-    
+            neg_score += abs(kosakata_negatif[token])  # gunakan abs agar bobot negatif benar-benar mengurangi skor
     total_score = pos_score - neg_score  # Perbaikan rumus skor
     
     if total_score > 0:
@@ -546,6 +566,7 @@ plt.show()
 # 10.1. Simpan hasil
 print("\nMenyimpan hasil analisis...")
 output_filename = 'datasets/ulasan_honkai_impact_3_processed.csv'
+os.makedirs('datasets', exist_ok=True)
 clean_df.to_csv(output_filename, index=False, encoding='utf-8')
 print(f"✅ Dataset berhasil disimpan sebagai '{output_filename}'")
 
