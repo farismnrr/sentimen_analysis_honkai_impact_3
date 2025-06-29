@@ -300,13 +300,25 @@ if len(models_above_92) >= 1:
 
 def predict_sentiment(text, model, vectorizer):
     text_vector = vectorizer.transform([text])
-    pred_class = model.predict(text_vector)[0]
-    
-    if hasattr(model, 'predict_proba'):
-        probs = model.predict_proba(text_vector)[0]
-        confidence = max(probs)
+    if hasattr(vectorizer, 'get_feature_names_out'):
+        feature_names = vectorizer.get_feature_names_out()
+        text_df = pd.DataFrame(text_vector.toarray(), columns=feature_names)
+        pred_class = model.predict(text_df)[0]
+        
+        if hasattr(model, 'predict_proba'):
+            probs = model.predict_proba(text_df)[0]
+            confidence = max(probs)
+        else:
+            confidence = 1.0
     else:
-        confidence = 1.0
+        text_array = text_vector.toarray()
+        pred_class = model.predict(text_array)[0]
+        
+        if hasattr(model, 'predict_proba'):
+            probs = model.predict_proba(text_array)[0]
+            confidence = max(probs)
+        else:
+            confidence = 1.0
     
     return pred_class, confidence
 
@@ -315,7 +327,8 @@ def predict_lstm(text):
     """Predict sentiment using LSTM model"""
     seq = tokenizer.texts_to_sequences([text])
     padded = pad_sequences(seq, maxlen=20, padding='post')
-    probs = lstm_model.predict(padded)
+    with tf.device('/GPU:0' if gpus else '/CPU:0'):
+        probs = lstm_model.predict(padded, verbose=0)  # Add verbose=0 to reduce output
     pred_class = np.argmax(probs, axis=1)[0]
     confidence = max(probs[0])
     return label_encoder.inverse_transform([pred_class])[0], confidence
@@ -327,11 +340,11 @@ def predict_lstm(text):
 print(f"\n--- Inference Testing ---")
 
 test_texts = [
-    "Game ini sangat bagus dan menyenangkan!",
-    "Aplikasi sering crash, sangat mengecewakan",
-    "Grafik bagus tapi gameplay biasa saja",
+    "good game, fun mechanics",
+    "Membosankan",
+    "garbage company",
     "Honkai Impact 3rd game terbaik!",
-    "Bug banyak sekali, tidak recommended"
+    "bring back part",
 ]
 
 for i, text in enumerate(test_texts, 1):

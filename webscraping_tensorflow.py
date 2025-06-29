@@ -139,15 +139,7 @@ for sort_method in sort_methods:
             all_reviews.append(review)
     print(f"✅ {sort_name}: {len(reviews):,} total, {len(all_reviews):,} unique")
 
-# 3.4. Koleksi hanya bahasa Indonesia
-# print("⏳ Mengumpulkan review bahasa Indonesia saja...")
-# with tf.device('/GPU:0' if tf.config.list_physical_devices('GPU') else '/CPU:0'):
-#     reviews_newest = reviews_all(app_id, lang='id', sort=Sort.NEWEST, count=15000)
-#     reviews_relevant = reviews_all(app_id, lang='id', sort=Sort.MOST_RELEVANT, count=15000)
-# all_reviews = reviews_newest + reviews_relevant
-# print(f"✅ Total review Indonesia terkumpul: {len(all_reviews):,}")
-
-# 3.5. Fallback jika gagal
+# 3.4. Fallback jika gagal
 if not all_reviews:
     print("❌ Gagal mengumpulkan ulasan. Menggunakan fallback method...")
     all_reviews = reviews_all(app_id, lang='id')
@@ -155,7 +147,7 @@ if not all_reviews:
 
 df_all = pd.DataFrame(all_reviews)
 total_collected = len(df_all)
-print(f"\n🎉 BERHASIL MENGUMPULKAN: {total_collected:,} ulasan bahasa Indonesia")
+print(f"\n🎉 BERHASIL MENGUMPULKAN: {total_collected:,} ulasan")
 
 # =============================================================================
 # 4. SKIP ANALISIS DAN TRANSLASI BAHASA
@@ -164,7 +156,7 @@ print(f"\n🎉 BERHASIL MENGUMPULKAN: {total_collected:,} ulasan bahasa Indonesi
 
 # 4.1. Analisis distribusi bahasa
 df_all['content_final'] = df_all['content']
-print(f"✅ Semua review sudah dalam bahasa Indonesia. Total data: {len(df_all)}")
+print(f"✅ Total data: {len(df_all)}")
 
 # 4.2. Copy dataframe untuk proses selanjutnya
 clean_df = df_all.copy()
@@ -218,7 +210,7 @@ print("✅ Case folding selesai")
 
 # 6.3. Normalisasi slang
 print("Tahap slang normalization...")
-slangwords = {'sy': 'saya', 'sya': 'saya', 'gw': 'saya', 'gua': 'saya', 'gue': 'saya', 'yg': 'yang', 'bgt': 'banget', 'bgtt': 'banget', 'bngt': 'banget', 'bangettt': 'banget', 'apk': 'aplikasi', 'app': 'aplikasi', 'apknya': 'aplikasinya', 'appnya': 'aplikasinya', 'udah': 'sudah', 'udh': 'sudah', 'dah': 'sudah', 'sdh': 'sudah', 'tp': 'tetapi', 'tapi': 'tetapi', 'tpi': 'tetapi', 'krn': 'karena', 'karna': 'karena', 'pls': 'tolong', 'plis': 'tolong', 'gak': 'tidak', 'ga': 'tidak', 'gk': 'tidak', 'ngga': 'tidak', 'nggak': 'tidak', 'bs': 'bisa', 'bsa': 'bisa', 'gabisa': 'tidak bisa', 'hrs': 'harus', 'utk': 'untuk', 'dgn': 'dengan', 'blm': 'belum', 'lg': 'lagi', 'lgi': 'lagi', 'lagii': 'lagi', 'jg': 'juga', 'jga': 'juga', 'jd': 'jadi', 'jdi': 'jadi', 'dr': 'dari', 'dri': 'dari', 'klo': 'kalau', 'kl': 'kalau', 'kalo': 'kalau', 'gimana': 'bagaimana', 'knp': 'kenapa', 'bgus': 'bagus', 'bgs': 'bagus', 'baguss': 'bagus', 'bagusss': 'bagus', 'elek': 'jelek', 'eleek': 'jelek', 'ok': 'oke', 'okelah': 'oke lah', 'makasih': 'terima kasih', 'terimakasih': 'terima kasih', 'pake': 'pakai', 'pke': 'pakai', 'make': 'pakai', 'nyoba': 'mencoba', 'nyobain': 'mencoba', 'op': 'overpowered', 'imba': 'tidak seimbang', 'broken': 'terlalu kuat', 'nerf': 'melemahkan', 'buff': 'menguatkan', 'meta': 'strategi terbaik', 'chara': 'karakter', 'char': 'karakter', 'waifu': 'karakter wanita favorit', 'husbando': 'karakter pria favorit', 'dps': 'damage per second', 'tank': 'karakter pertahanan', 'heal': 'penyembuhan', 'healer': 'penyembuh', 'support': 'pendukung', 'cc': 'crowd control', 'aoe': 'area of effect', 'pull': 'tarikan', 'pulls': 'tarikan', 'rate': 'tingkat', 'rates': 'tingkat', 'banner': 'event', 'gacha': 'undian', 'rng': 'keberuntungan', 'f2p': 'free to play', 'p2p': 'pay to play', 'p2w': 'pay to win', 'whale': 'pembeli besar', 'dolphins': 'pembeli sedang', 'gems': 'permata', 'crystal': 'kristal', 'crystals': 'kristal', 'premium': 'berbayar', 'skin': 'kostum', 'skins': 'kostum', 'lag': 'macet', 'ngelag': 'macet', 'leg': 'macet', 'fps': 'frame per second', 'ping': 'koneksi', 'dc': 'disconnect', 'bug': 'kesalahan dalam game', 'glitch': 'kesalahan', 'crash': 'crash', 'error': 'kesalahan', 'loading': 'memuat', 'loadingnya': 'pemuatannya', 'update': 'pembaruan', 'patch': 'pembaruan', 'maintenance': 'perawatan', 'server': 'peladen', 'down': 'mati', 'coop': 'kerjasama', 'co op': 'kerjasama', 'pvp': 'player versus player', 'pve': 'player versus environment', 'raid': 'serangan berkelompok', 'story': 'cerita', 'storyline': 'alur cerita', 'quest': 'misi', 'mission': 'misi', 'event': 'acara', 'events': 'acara', 'reward': 'hadiah', 'rewards': 'hadiah', 'loot': 'jarahan', 'drop': 'jatuh', 'drops': 'jatuhan', 'farm': 'mengumpulkan', 'farming': 'mengumpulkan', 'grind': 'menggiling', 'grinding': 'menggiling', 'fun': 'menyenangkan', 'boring': 'membosankan', 'addictive': 'membuat ketagihan', 'smooth': 'lancar', 'fluid': 'lancar', 'responsive': 'responsif', 'graphics': 'grafis', 'graphic': 'grafis', 'visual': 'visual', 'audio': 'suara', 'sound': 'suara', 'music': 'musik', 'gameplay': 'permainan', 'control': 'kontrol', 'controls': 'kontrol', 'mantap': 'bagus', 'mantep': 'bagus', 'keren': 'bagus', 'jelek': 'buruk', 'seru': 'menyenangkan', 'asyik': 'menyenangkan', 'bosen': 'membosankan', 'ribet': 'rumit', 'susah': 'sulit', 'gampang': 'mudah', 'mudah': 'mudah', 'kece': 'bagus', 'top': 'terbaik', 'recommended': 'direkomendasikan', 'worth': 'layak', 'worthit': 'layak', 'rugi': 'tidak layak', 'kayak': 'seperti', 'kyk': 'seperti', 'kya': 'seperti', 'gini': 'seperti ini', 'gitu': 'seperti itu', 'ampe': 'sampai', 'sampe': 'sampai', 'skrg': 'sekarang', 'pdhl': 'padahal', 'pdahal': 'padahal', 'aj': 'saja', 'ajaa': 'saja', 'ajah': 'saja', 'jgn': 'jangan', 'jan': 'jangan', 'jngn': 'jangan', 'trs': 'terus', 'trus': 'terus', 'cuma': 'hanya', 'cuman': 'hanya', 'km': 'kamu', 'lu': 'kamu', 'lo': 'kamu', 'loe': 'kamu'}
+slangwords = {'sy': 'saya', 'sya': 'saya', 'gw': 'saya', 'gua': 'saya', 'gue': 'saya', 'yg': 'yang', 'bgt': 'banget', 'bgtt': 'banget', 'bngt': 'banget', 'bangettt': 'banget', 'apk': 'aplikasi', 'app': 'aplikasi', 'apknya': 'aplikasinya', 'appnya': 'aplikasinya', 'udah': 'sudah', 'udh': 'sudah', 'dah': 'sudah', 'sdh': 'sudah', 'tp': 'tetapi', 'tapi': 'tetapi', 'tpi': 'tetapi', 'krn': 'karena', 'karna': 'karena', 'pls': 'tolong', 'plis': 'tolong', 'gak': 'tidak', 'ga': 'tidak', 'gk': 'tidak', 'ngga': 'tidak', 'nggak': 'tidak', 'bs': 'bisa', 'bsa': 'bisa', 'gabisa': 'tidak bisa', 'hrs': 'harus', 'utk': 'untuk', 'dgn': 'dengan', 'blm': 'belum', 'lg': 'lagi', 'lgi': 'lagi', 'lagii': 'lagi', 'jg': 'juga', 'jga': 'juga', 'jd': 'jadi', 'jdi': 'jadi', 'dr': 'dari', 'dri': 'dari', 'klo': 'kalau', 'kl': 'kalau', 'kalo': 'kalau', 'gimana': 'bagaimana', 'knp': 'kenapa', 'bgus': 'bagus', 'bgs': 'bagus', 'baguss': 'bagus', 'bagusss': 'bagus', 'elek': 'jelek', 'eleek': 'jelek', 'ok': 'oke', 'okelah': 'oke lah', 'makasih': 'terima kasih', 'terimakasih': 'terima kasih', 'pake': 'pakai', 'pke': 'pakai', 'make': 'pakai', 'nyoba': 'mencoba', 'nyobain': 'mencoba', 'op': 'overpowered', 'imba': 'tidak seimbang', 'broken': 'terlalu kuat', 'nerf': 'melemahkan', 'buff': 'menguatkan', 'meta': 'strategi terbaik', 'chara': 'karakter', 'char': 'karakter', 'waifu': 'karakter wanita favorit', 'husbando': 'karakter pria favorit', 'dps': 'damage per second', 'tank': 'karakter pertahanan', 'heal': 'penyembuhan', 'healer': 'penyembuh', 'support': 'pendukung', 'cc': 'crowd control', 'aoe': 'area of effect', 'pull': 'tarikan', 'pulls': 'tarikan', 'rate': 'tingkat', 'rates': 'tingkat', 'banner': 'event', 'gacha': 'undian', 'rng': 'keberuntungan', 'f2p': 'free to play', 'p2p': 'pay to play', 'p2w': 'pay to win', 'whale': 'pembeli besar', 'dolphins': 'pembeli sedang', 'gems': 'permata', 'crystal': 'kristal', 'crystals': 'kristal', 'premium': 'berbayar', 'skin': 'kostum', 'skins': 'kostum', 'lag': 'macet', 'ngelag': 'macet', 'leg': 'macet', 'fps': 'frame per second', 'ping': 'koneksi', 'dc': 'disconnect', 'bug': 'bug', 'glitch': 'glitch', 'crash': 'crash', 'error': 'error', 'loading': 'memuat', 'loadingnya': 'pemuatannya', 'update': 'pembaruan', 'patch': 'pembaruan', 'maintenance': 'perawatan', 'server': 'peladen', 'down': 'mati', 'coop': 'kerjasama', 'co op': 'kerjasama', 'pvp': 'player versus player', 'pve': 'player versus environment', 'raid': 'serangan berkelompok', 'story': 'cerita', 'storyline': 'alur cerita', 'quest': 'misi', 'mission': 'misi', 'event': 'acara', 'events': 'acara', 'reward': 'hadiah', 'rewards': 'hadiah', 'loot': 'jarahan', 'drop': 'jatuh', 'drops': 'jatuhan', 'farm': 'mengumpulkan', 'farming': 'mengumpulkan', 'grind': 'menggiling', 'grinding': 'menggiling', 'fun': 'menyenangkan', 'boring': 'membosankan', 'addictive': 'membuat ketagihan', 'smooth': 'lancar', 'fluid': 'lancar', 'responsive': 'responsif', 'graphics': 'grafis', 'graphic': 'grafis', 'visual': 'visual', 'audio': 'suara', 'sound': 'suara', 'music': 'musik', 'gameplay': 'permainan', 'control': 'kontrol', 'controls': 'kontrol', 'mantap': 'bagus', 'mantep': 'bagus', 'keren': 'bagus', 'jelek': 'buruk', 'seru': 'menyenangkan', 'asyik': 'menyenangkan', 'bosen': 'membosankan', 'ribet': 'rumit', 'susah': 'sulit', 'gampang': 'mudah', 'mudah': 'mudah', 'kece': 'bagus', 'top': 'terbaik', 'recommended': 'recommended',        'worth': 'layak', 'worthit': 'layak', 'rugi': 'tidak layak', 'kayak': 'seperti', 'kyk': 'seperti', 'kya': 'seperti', 'gini': 'seperti ini', 'gitu': 'seperti itu', 'ampe': 'sampai', 'sampe': 'sampai', 'skrg': 'sekarang', 'pdhl': 'padahal', 'pdahal': 'padahal', 'aj': 'saja', 'ajaa': 'saja', 'ajah': 'saja', 'jgn': 'jangan', 'jan': 'jangan', 'jngn': 'jangan', 'trs': 'terus', 'trus': 'terus', 'cuma': 'hanya', 'cuman': 'hanya', 'km': 'kamu', 'lu': 'kamu', 'lo': 'kamu', 'loe': 'kamu', 'biasa': 'biasa'}
 normalized_texts = []
 for text in clean_df['text_casefold']:
     words = text.split()
@@ -284,7 +276,10 @@ try:
             'bagus': 1, 'baik': 1, 'suka': 1, 'senang': 1, 'puas': 1, 
             'recommended': 1, 'mantap': 1, 'keren': 1, 'awesome': 1,
             'great': 1, 'love': 1, 'best': 1, 'amazing': 1, 'good': 1,
-            'excellent': 1, 'perfect': 1, 'nice': 1
+            'excellent': 1, 'perfect': 1, 'nice': 1, 'menyenangkan': 1,
+            'lancar': 1, 'responsif': 1, 'grafis': 1, 'terbaik': 1,
+            'layak': 1, 'direkomendasikan': 1, 'seru': 1, 'oke': 1,
+            'smooth': 1, 'fluid': 1, 'fun': 1
         }
         print(f"✅ Menggunakan {len(kosakata_positif)} kata positif fallback")
 except Exception as e:
@@ -293,7 +288,10 @@ except Exception as e:
         'bagus': 1, 'baik': 1, 'suka': 1, 'senang': 1, 'puas': 1, 
         'recommended': 1, 'mantap': 1, 'keren': 1, 'awesome': 1,
         'great': 1, 'love': 1, 'best': 1, 'amazing': 1, 'good': 1,
-        'excellent': 1, 'perfect': 1, 'nice': 1
+        'excellent': 1, 'perfect': 1, 'nice': 1, 'menyenangkan': 1,
+        'lancar': 1, 'responsif': 1, 'grafis': 1, 'terbaik': 1,
+        'layak': 1, 'direkomendasikan': 1, 'seru': 1, 'oke': 1,
+        'smooth': 1, 'fluid': 1, 'fun': 1
     }
     print(f"✅ Menggunakan {len(kosakata_positif)} kata positif fallback")
 
@@ -318,7 +316,9 @@ try:
             'buruk': 1, 'jelek': 1, 'benci': 1, 'kecewa': 1, 'marah': 1,
             'gagal': 1, 'rusak': 1, 'kurang': 1, 'lambat': 1, 'crash': 1,
             'bad': 1, 'worst': 1, 'hate': 1, 'terrible': 1, 'poor': 1,
-            'disappointed': 1, 'awful': 1, 'horrible': 1, 'fail': 1
+            'disappointed': 1, 'awful': 1, 'horrible': 1, 'fail': 1,
+            'bug': 1, 'error': 1, 'glitch': 1, 'lag': 1, 'lemot': 1,
+            'tidak': 1, 'membosankan': 1, 'sulit': 1, 'rumit': 1
         }
         print(f"✅ Menggunakan {len(kosakata_negatif)} kata negatif fallback")
 except Exception as e:
@@ -327,43 +327,93 @@ except Exception as e:
         'buruk': 1, 'jelek': 1, 'benci': 1, 'kecewa': 1, 'marah': 1,
         'gagal': 1, 'rusak': 1, 'kurang': 1, 'lambat': 1, 'crash': 1,
         'bad': 1, 'worst': 1, 'hate': 1, 'terrible': 1, 'poor': 1,
-        'disappointed': 1, 'awful': 1, 'horrible': 1, 'fail': 1
+        'disappointed': 1, 'awful': 1, 'horrible': 1, 'fail': 1,
+        'bug': 1, 'error': 1, 'glitch': 1, 'lag': 1, 'lemot': 1,
+        'tidak': 1, 'membosankan': 1, 'sulit': 1, 'rumit': 1
     }
     print(f"✅ Menggunakan {len(kosakata_negatif)} kata negatif fallback")
 
+# 7.3. Tambahkan kamus kata netral untuk frasa seperti "biasa saja"
+kosakata_netral = {
+    'biasa': 0, 'normal': 0, 'standar': 0, 'umumnya': 0, 'rata': 0,
+    'lumayan': 0, 'cukup': 0, 'sedang': 0, 'menengah': 0, 'moderately': 0,
+    'average': 0, 'okay': 0, 'so': 0, 'seperti': 0, 'kayak': 0
+}
+print(f"✅ Menambahkan {len(kosakata_netral)} kata netral")
+
+# 7.4. Perbaiki kamus negatif dengan handling khusus dan ekspansi kata negatif
 kosakata_negatif.update({
-    # Indonesia
-    'parah': -1, 'sampah': -2, 'lemot': -1, 'lag': -1, 'ngelag': -1, 'error': -1, 'crash': -1, 'hang': -1, 'lelet': -1,
-    'jelek': -1, 'buruk': -1, 'benci': -1, 'kecewa': -1, 'mengecewakan': -1, 'payah': -1, 'rip': -1, 'gagal': -1,
-    'susah': -1, 'sulit': -1, 'ribet': -1, 'bohong': -2, 'tipu': -2, 'lemotnya': -1, 'bug': -1, 'glitch': -1, 'down': -1, 'mati': -1,
-    'hilang': -1, 'hilangnya': -1, 'lemah': -1, 'menyebalkan': -1, 'menjengkelkan': -1, 'bosen': -1, 'bosan': -1, 'membosankan': -1,
-    'tidak bisa': -1, 'tidak layak': -1, 'tidak suka': -1, 'tidak puas': -1, 'tidak bagus': -1, 'tidak baik': -1, 'tidak lancar': -1,
-    'tidak stabil': -1, 'tidak responsif': -1, 'tidak jelas': -1, 'tidak menarik': -1, 'tidak seru': -1, 'tidak keren': -1, 'tidak worth': -1,
-    'tidak recommended': -1, 'tidak direkomendasikan': -1, 'tidak nyaman': -1, 'tidak update': -1, 'tidak adil': -1, 'tidak seimbang': -1,
-    'tidak menyenangkan': -1, 'tidak memuaskan': -1, 'tidak membantu': -1, 'tidak support': -1, 'tidak connect': -1, 'disconnect': -1, 'dc': -1,
-    'lemot banget': -2, 'parah banget': -2, 'crash terus': -2, 'force close': -2, 'forceclose': -2, 'keluar sendiri': -2, 'keluar': -1,
-    'tidak bisa login': -2, 'tidak bisa main': -2, 'tidak bisa dibuka': -2, 'tidak bisa install': -2, 'tidak bisa update': -2,
-    'tidak bisa download': -2, 'tidak bisa connect': -2, 'tidak bisa masuk': -2, 'tidak bisa keluar': -2, 'tidak bisa jalan': -2,
-    'tidak bisa klik': -2, 'tidak bisa sentuh': -2, 'tidak bisa respon': -2, 'tidak worthit': -2, 'tidak recommended': -2,
-    'tidak direkomendasikan': -2, 'tidak suka': -2, 'tidak puas': -2, 'tidak bagus': -2, 'tidak baik': -2, 'tidak lancar': -2,
-    'tidak stabil': -2, 'tidak responsif': -2, 'tidak jelas': -2, 'tidak menarik': -2, 'tidak seru': -2, 'tidak keren': -2,
-    'tidak worth': -2, 'tidak recommended': -2, 'tidak direkomendasikan': -2, 'tidak nyaman': -2, 'tidak update': -2, 'tidak adil': -2,
-    'tidak seimbang': -2, 'tidak menyenangkan': -2, 'tidak memuaskan': -2, 'tidak membantu': -2, 'tidak support': -2, 'tidak connect': -2,
-    'disconnect': -2, 'dc': -2,
-    # Kata kasar/ekstrim Indonesia
-    'anjing': -3, 'bangsat': -3, 'kontol': -3, 'memek': -3, 'goblok': -3, 'tolol': -3, 'babi': -3, 'tai': -3, 'kampret': -2, 'brengsek': -3, 'setan': -2, 'sialan': -2, 'cacat': -2, 'idiot': -3, 'bodoh': -3, 'sinting': -2, 'edun': -2, 'edun banget': -2, 'ngentot': -3, 'fuck': -3, 'shit': -3, 'bitch': -3, 'bastard': -3, 'dick': -3, 'asshole': -3, 'jerk': -2, 'moron': -3, 'stupid': -3, 'dumb': -3, 'sucks': -2, 'useless': -2, 'trash': -3, 'garbage': -3, 'scam': -3, 'cheat': -2, 'cheater': -2, 'broken': -2, 'laggy': -2, 'slow': -1, 'crappy': -2, 'annoying': -1, 'hate': -2, 'worst': -3, 'terrible': -3, 'awful': -3, 'disgusting': -3, 'buggy': -2, 'crash': -2, 'disconnect': -2, 'unplayable': -3, 'pathetic': -3, 'horrible': -3, 'lousy': -2, 'retard': -3, 'retarded': -3, 'fucking': -3, 'damn': -2, 'dammit': -2, 'shithead': -3, 'douche': -3, 'douchebag': -3, 'loser': -2, 'jerk': -2, 'sial': -2, 'kampungan': -2, 'ngaco': -2, 'ngawur': -2, 'ngasal': -2, 'alay': -2, 'lebay': -2, 'norak': -2, 'ngeselin': -2, 'menyebalkan': -2, 'menjengkelkan': -2, 'parah banget': -3, 'sampah banget': -3
+    # Kata negatif dasar Indonesia
+    'jelek': 2, 'buruk': 2, 'parah': 2, 'sampah': 3, 'benci': 2, 'kecewa': 2, 'marah': 2,
+    'gagal': 2, 'rusak': 2, 'kurang': 1, 'lambat': 1, 'lemot': 2, 'lag': 2, 'ngelag': 2,
+    'error': 2, 'crash': 2, 'hang': 2, 'lelet': 2, 'payah': 2, 'mengecewakan': 2,
+    'susah': 1, 'sulit': 1, 'ribet': 2, 'lemah': 1, 'menyebalkan': 2, 'menjengkelkan': 2,
+    'bosen': 1, 'bosan': 1, 'membosankan': 2, 'kikir': 2, 'pelit': 2, 'serakah': 2,
+    
+    # Kata kasar dan ekstrim
+    'anjing': 3, 'bangsat': 3, 'kontol': 3, 'memek': 3, 'goblok': 3, 'tolol': 3, 
+    'babi': 3, 'tai': 3, 'kampret': 3, 'brengsek': 3, 'setan': 2, 'sialan': 3,
+    'cacat': 3, 'idiot': 3, 'bodoh': 2, 'sinting': 2, 'edun': 2, 'ngentot': 3,
+    'sial': 2, 'kampungan': 2, 'ngaco': 2, 'ngawur': 2, 'ngasal': 2, 'alay': 2,
+    'lebay': 1, 'norak': 2, 'ngeselin': 2, 'nyebelin': 2,
+    
+    # Kata negatif Inggris
+    'fuck': 3, 'shit': 3, 'bitch': 3, 'bastard': 3, 'dick': 3, 'asshole': 3,
+    'jerk': 2, 'moron': 3, 'stupid': 3, 'dumb': 3, 'hate': 2, 'worst': 3,
+    'terrible': 3, 'awful': 3, 'horrible': 3, 'disgusting': 3, 'pathetic': 3,
+    'useless': 2, 'trash': 3, 'garbage': 3, 'crap': 2, 'crappy': 2, 'sucks': 2,
+    'bad': 2, 'poor': 1, 'disappointed': 2, 'fail': 2, 'annoying': 2,
+    'slow': 1, 'laggy': 2, 'buggy': 2, 'broken': 2, 'unplayable': 3,
+    'lousy': 2, 'retard': 3, 'retarded': 3, 'fucking': 3, 'damn': 2, 'dammit': 2,
+    'douche': 3, 'loser': 2,
+    
+    # Gaming-specific negative terms
+    'scam': 3, 'cheat': 2, 'cheater': 2, 'hacker': 2, 'exploit': 2, 'bug': 2,
+    'glitch': 2, 'disconnect': 2, 'dc': 2, 'down': 2, 'mati': 2, 'hilang': 2,
+    'p2w': 2, 'pay2win': 2, 'whale': 1, 'unfair': 2, 'imbalance': 2,
+    'nerf': 1, 'overpowered': 1, 'op': 1, 'broken': 2, 'meta': 1,
+    
+    # Frasa negatif dengan "tidak"
+    'tidak': 1, 'tidak bisa': 2, 'tidak layak': 2, 'tidak suka': 2, 'tidak puas': 2,
+    'tidak bagus': 2, 'tidak baik': 2, 'tidak lancar': 2, 'tidak stabil': 2,
+    'tidak responsif': 2, 'tidak jelas': 2, 'tidak menarik': 2, 'tidak seru': 2,
+    'tidak keren': 2, 'tidak worth': 2, 'tidak recommended': 3, 'tidak direkomendasikan': 3,
+    'tidak nyaman': 2, 'tidak update': 2, 'tidak adil': 2, 'tidak seimbang': 2,
+    'tidak menyenangkan': 2, 'tidak memuaskan': 2, 'tidak membantu': 2,
+    'tidak support': 2, 'tidak connect': 2, 'tidak worthit': 3,
+    
+    # Frasa compound negatif
+    'lemot banget': 3, 'parah banget': 3, 'jelek banget': 3, 'buruk banget': 3,
+    'crash terus': 3, 'lag terus': 3, 'error terus': 3, 'force close': 3,
+    'forceclose': 3, 'keluar sendiri': 3, 'tidak bisa login': 3, 'tidak bisa main': 3,
+    'tidak bisa dibuka': 3, 'tidak bisa install': 3, 'tidak bisa update': 3,
+    'tidak bisa download': 3, 'tidak bisa connect': 3, 'tidak bisa masuk': 3,
+    'tidak bisa keluar': 3, 'tidak bisa jalan': 3, 'tidak bisa klik': 3,
+    'tidak bisa sentuh': 3, 'tidak bisa respon': 3, 'edun banget': 3,
+    'sampah banget': 3, 'benci banget': 3, 'kecewa banget': 3,
+    
+    # Developer-related negative terms
+    'kikir': 2, 'pelit': 2, 'serakah': 2, 'developer kikir': 3, 'dev kikir': 3,
+    'developer pelit': 3, 'dev pelit': 3, 'developer serakah': 3, 'dev serakah': 3,
+    'mihoyo kikir': 3, 'mihoyo pelit': 3, 'mihoyo serakah': 3,
+    
+    # Kombinasi kata kasar dengan game terms
+    'game anjing': 3, 'game sampah': 3, 'game jelek': 3, 'game buruk': 3,
+    'app anjing': 3, 'app sampah': 3, 'app jelek': 3, 'app buruk': 3,
+    'aplikasi anjing': 3, 'aplikasi sampah': 3, 'aplikasi jelek': 3, 'aplikasi buruk': 3
 })
 
-# 8. SENTIMENT CLASSIFICATION
-# =============================================================================
-# 8.1. Debug info untuk kamus sentimen
+# 7.5. Debug info untuk kamus sentimen
 print("\nDebug info kamus sentimen:")
 print(f"📊 Jumlah kata positif: {len(kosakata_positif)}")
 print(f"📊 Jumlah kata negatif: {len(kosakata_negatif)}")
+print(f"📊 Jumlah kata netral: {len(kosakata_netral)}")
 if len(kosakata_positif) > 0:
     print(f"📝 Contoh kata positif: {list(kosakata_positif.keys())[:5]}")
 if len(kosakata_negatif) > 0:
     print(f"📝 Contoh kata negatif: {list(kosakata_negatif.keys())[:5]}")
+if len(kosakata_netral) > 0:
+    print(f"📝 Contoh kata netral: {list(kosakata_netral.keys())[:5]}")
 
 # Cek contoh token dari data
 sample_tokens = [tokens for tokens in clean_df['text_filtered'][:100] if tokens]
@@ -375,44 +425,77 @@ if sample_tokens:
     print(f"📊 Token positif yang ditemukan: {pos_match[:5]}")
     print(f"📊 Token negatif yang ditemukan: {neg_match[:5]}")
 
-# 8.2. Proses analisis sentimen dengan perbaikan
+# =============================================================================
+# 8. SENTIMENT CLASSIFICATION
+# =============================================================================
+# 8.1. Proses analisis sentimen dengan perbaikan dan deteksi frasa
 print("\nAnalisis sentimen...")
 polarity_scores = []
 polarities = []
 
-for tokens in clean_df['text_filtered']:
+def detect_negative_phrases(text):
+    """Deteksi frasa negatif dalam teks"""
+    negative_phrases = [
+        'game anjing', 'game sampah', 'game jelek', 'game buruk',
+        'app anjing', 'app sampah', 'app jelek', 'app buruk', 
+        'aplikasi anjing', 'aplikasi sampah', 'aplikasi jelek', 'aplikasi buruk',
+        'developer kikir', 'dev kikir', 'developer pelit', 'dev pelit',
+        'developer serakah', 'dev serakah', 'mihoyo kikir', 'mihoyo pelit',
+        'tidak bisa', 'tidak layak', 'tidak worth', 'tidak recommended',
+        'lemot banget', 'lag banget', 'crash terus', 'error terus',
+        'jelek banget', 'buruk banget', 'parah banget', 'sampah banget'
+    ]
+    
+    text_lower = text.lower()
+    phrase_score = 0
+    for phrase in negative_phrases:
+        if phrase in text_lower:
+            phrase_score += 3  # Bobot tinggi untuk frasa negatif
+    
+    return phrase_score
+
+for idx, tokens in enumerate(clean_df['text_filtered']):
     if not tokens:
         polarity_scores.append(0)
         polarities.append('neutral')
         continue
     
-    # Hitung skor secara lebih robust
+    # Hitung skor token individual
     pos_score = 0
     neg_score = 0
+    neutral_score = 0
     
     for token in tokens:
         if token in kosakata_positif:
             pos_score += kosakata_positif[token]
-        if token in kosakata_negatif:
-            neg_score += abs(kosakata_negatif[token])  # gunakan abs agar bobot negatif benar-benar mengurangi skor
-    total_score = pos_score - neg_score  # Perbaikan rumus skor
+        elif token in kosakata_negatif:
+            neg_score += kosakata_negatif[token]
+        elif token in kosakata_netral:
+            neutral_score += 1
     
-    if total_score > 0:
+    # Deteksi frasa negatif dari teks original
+    original_text = clean_df.iloc[idx]['content'] if 'content' in clean_df.columns else ''
+    phrase_neg_score = detect_negative_phrases(str(original_text))
+    
+    # Tambahkan skor frasa ke skor negatif
+    neg_score += phrase_neg_score
+    
+    # Hitung total score dengan bobot yang diperbaiki
+    total_score = pos_score - neg_score
+    
+    # Logika klasifikasi yang diperbaiki
+    if neg_score >= 3 or phrase_neg_score >= 3:  # Prioritas tinggi untuk kata/frasa sangat negatif
+        polarity = 'negative'
+    elif pos_score >= 3 and neg_score == 0:  # Prioritas tinggi untuk kata sangat positif tanpa negatif
         polarity = 'positive'
-    elif total_score < 0:
+    elif neutral_score > 0 and abs(total_score) <= 1:
+        polarity = 'neutral'
+    elif total_score > 1:
+        polarity = 'positive'
+    elif total_score < -1:
         polarity = 'negative'
     else:
-        # Fallback berdasarkan skor review jika tersedia
-        if 'score' in clean_df.columns:
-            score = clean_df.loc[len(polarities), 'score']
-            if score >= 4:
-                polarity = 'positive'
-            elif score <= 2:
-                polarity = 'negative'
-            else:
-                polarity = 'neutral'
-        else:
-            polarity = 'neutral'
+        polarity = 'neutral'
     
     polarity_scores.append(float(total_score))
     polarities.append(polarity)
